@@ -271,7 +271,7 @@ public final class MqttTimerMain
 
     public static void showUsageAndExit(PrintStream p_out, int p_iExitCode)
     {
-        p_out.println("mqtt.timer.MqttTimerMain --server-uri <uri> [OPTION]...");
+        p_out.println("mqtt.timer.MqttTimerMain --uri <uri> [OPTION]...");
         p_out.println();
         p_out.println("  --uri <uri>              the server URI, e.g. tcp://localhost:1883");
         p_out.println("  --user <user name>       user name for authentication");

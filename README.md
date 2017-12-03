@@ -15,7 +15,7 @@ cd mqtt-timer
 ## Usage
 
 ```
-mqtt.timer.MqttTimerMain --server-uri <uri> [OPTION]...
+mqtt.timer.MqttTimerMain --uri <uri> [OPTION]...
 
   --uri <uri>              the server URI, e.g. tcp://localhost:1883
   --user <user name>       user name for authentication
