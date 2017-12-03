@@ -277,8 +277,8 @@ public final class MqttTimerMain
         p_out.println("  --user <user name>       user name for authentication");
         p_out.println("  --pass <password>        password authentication");
         p_out.println("  --freq <frequency>       supported values are secondly (default),");
-        p_out.println("                           minutely, hourly, or daily, hundredmsly,");
-        p_out.println("                           tenmsly");
+        p_out.println("                           minutely, hourly, daily, hundredmsly,");
+        p_out.println("                           or tenmsly");
         p_out.println("  --topic <topic name>     an optional topic (default is timer/<frequency>)");
         p_out.println("  --start-delay <num>      start delay in milliseconds before the");
         p_out.println("                           connection to the server is established");
