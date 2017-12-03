@@ -1,0 +1,12 @@
+/.settings/
+/.project
+/.classpath
+/.idea/
+/.gradle/
+/jaffre.iml
+/bin/
+/docs/
+/target/
+/build/
+/truststore/
+

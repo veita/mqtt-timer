@@ -1,0 +1,39 @@
+
+buildscript {
+	repositories {
+		jcenter()
+	}
+
+	dependencies {
+		classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+	}
+}
+
+
+apply plugin: 'application'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+
+mainClassName = 'mqtt.timer.MqttTimerMain'
+
+
+repositories {
+    jcenter()
+}
+
+
+dependencies {
+    compile group: 'org.eclipse.paho', name: 'org.eclipse.paho.client.mqttv3', version: '1.2.0'
+}
+
+
+shadowJar {
+    manifest {
+        from('src/main/resources/META-INF/MANIFEST.MF')
+        attributes(
+            'Specification-Title': project.name,
+            'Specification-Version': '1.0.0',
+			'Implementation-Title': project.name,
+			'Implementation-Version': '1.0.0')
+    }
+}
