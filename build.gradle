@@ -1,14 +1,17 @@
 
 
 plugins {
-    id 'com.github.johnrengelman.shadow' version '4.0.2'
+    id 'com.github.johnrengelman.shadow' version '6.1.0'
+    id 'application'
 }
 
 
-apply plugin: 'application'
-
-
 mainClassName = 'mqtt.timer.MqttTimerMain'
+
+
+ext.buildCommit    = 'git describe --always --tags --dirty=-dirty'.execute().text.trim()
+ext.buildTimestamp = java.time.format.DateTimeFormatter.ISO_INSTANT.format(java.time.Instant.now())
+ext.buildJdk       = "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})"
 
 
 repositories {
@@ -17,7 +20,7 @@ repositories {
 
 
 dependencies {
-    compile group: 'org.eclipse.paho', name: 'org.eclipse.paho.client.mqttv3', version: '1.2.0'
+    implementation group: 'org.eclipse.paho', name: 'org.eclipse.paho.client.mqttv3', version: '1.2.+'
 }
 
 
@@ -25,9 +28,13 @@ shadowJar {
     manifest {
         from('src/main/resources/META-INF/MANIFEST.MF')
         attributes(
-            'Specification-Title': project.name,
+            'Specification-Title':   project.name,
             'Specification-Version': '1.0.0',
-			'Implementation-Title': project.name,
-			'Implementation-Version': '1.0.0')
+            'Implementation-Title':  project.name,
+            'Build-Revision':        buildCommit,
+            'Build-Timestamp':       buildTimestamp,
+            'Build-Jdk':             buildJdk
+            )
     }
 }
+
