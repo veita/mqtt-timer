@@ -15,7 +15,7 @@ ext.buildJdk       = "${System.properties['java.version']} (${System.properties[
 
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 
