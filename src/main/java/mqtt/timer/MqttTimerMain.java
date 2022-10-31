@@ -28,16 +28,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
+import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.TimerPingSender;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public final class MqttTimerMain
 {
+    /** Helper for logging.*/
+    private static final Logger ms_log = LoggerFactory.getLogger(MqttTimerMain.class);
+
     private enum Frequency
     {
         secondly(1000L),
@@ -56,18 +60,16 @@ public final class MqttTimerMain
     }
 
 
-    private static final class TimerMqttAsyncClient extends MqttAsyncClient implements AutoCloseable
+    private static final class TimerMqttClient extends MqttClient implements AutoCloseable
     {
-        protected TimerMqttAsyncClient(String                   p_strServerUri,
-                                       ScheduledExecutorService p_executor,
-                                       Frequency                p_freq)
+        protected TimerMqttClient(String                   p_strServerUri,
+                                  ScheduledExecutorService p_executor,
+                                  Frequency                p_freq)
             throws MqttException
         {
             super(p_strServerUri,
                   "mqtt-timer-" + p_freq.name() + "-" + UUID.randomUUID().toString(),
-                  new MemoryPersistence(),
-                  new TimerPingSender(),
-                  p_executor);
+                  new MemoryPersistence());
         }
     }
 
@@ -78,7 +80,9 @@ public final class MqttTimerMain
 
         private final ScheduledExecutorService m_executor;
 
-        private final TimerMqttAsyncClient m_client;
+        private final TimerMqttClient m_client;
+
+        private final MqttConnectOptions m_options;
 
         private final Frequency m_freq;
 
@@ -90,13 +94,15 @@ public final class MqttTimerMain
 
 
         protected Timer(ScheduledExecutorService p_executor,
-                        TimerMqttAsyncClient     p_client,
+                        TimerMqttClient          p_client,
+                        MqttConnectOptions       p_options,
                         Frequency                p_freq,
                         String                   p_strTopic,
                         boolean                  p_bSilent)
         {
             m_executor = p_executor;
             m_client   = p_client;
+            m_options  = p_options;
             m_freq     = p_freq;
             m_strTopic = p_strTopic;
             m_bSilent  = p_bSilent;
@@ -111,19 +117,26 @@ public final class MqttTimerMain
         @Override
         public void run()
         {
+            final boolean l_bPublished;
+
             if (m_bScheduled)
-                _publish();
+                l_bPublished = _publish();
+            else
+                l_bPublished = false;
 
             if (!m_executor.isShutdown())
             {
-                m_executor.schedule(this, _nextDelay(), TimeUnit.MILLISECONDS);
+                if (l_bPublished)
+                    m_executor.schedule(this, _nextDelay(), TimeUnit.MILLISECONDS);
+                else
+                    m_executor.schedule(this, 500, TimeUnit.MILLISECONDS);
 
                 m_bScheduled = true;
             }
         }
 
 
-        private void _publish()
+        private boolean _publish()
         {
             final String      l_strTimestamp;
             final MqttMessage l_message;
@@ -136,15 +149,46 @@ public final class MqttTimerMain
 
             try
             {
-                m_client.publish(m_strTopic, l_message).waitForCompletion();
+                if (!m_client.isConnected())
+                {
+                    if (!m_bSilent)
+                        ms_log.info("Try to connect.");
+
+                    try
+                    {
+                        m_client.connect(m_options);
+                    }
+                    catch (MqttException l_e)
+                    {
+                        ms_log.error("Could not connect.");
+
+                        return false; // try again later
+                    }
+                }
+
+                m_client.publish(m_strTopic, l_message);
 
                 if (!m_bSilent)
-                    System.out.println(l_strTimestamp);
+                    ms_log.info(l_strTimestamp);
+
+                return true;
             }
             catch (MqttException l_e)
             {
+                try
+                {
+                    m_client.disconnect(3000L);
+                }
+                catch (MqttException l_ex)
+                {
+                    if (!m_bSilent)
+                        ms_log.error("Disconnect due to error.", l_e);
+                }
+
                 if (!m_bSilent)
-                    System.out.println(l_e.getMessage());
+                    ms_log.info(l_e.getMessage());
+
+                return false;
             }
         }
 
@@ -252,8 +296,7 @@ public final class MqttTimerMain
         {
             l_main = new MqttTimerMain();
 
-            Runtime.getRuntime().addShutdownHook
-                (new Thread(l_main::_shutdown, "ShutdownHook"));
+            Runtime.getRuntime().addShutdownHook(new Thread(l_main::_shutdown, "ShutdownHook"));
 
             l_main._run
                 (l_strServerUri, l_strUser, l_strPassword, l_freq, l_strTopic, l_lStartDelay, l_bSilent);
@@ -262,7 +305,7 @@ public final class MqttTimerMain
         }
         catch (Exception l_e)
         {
-            l_e.printStackTrace(System.err);
+            ms_log.error(l_e.getMessage(), l_e);
 
             System.exit(1);
         }
@@ -282,7 +325,7 @@ public final class MqttTimerMain
         p_out.println("  --topic <topic name>     an optional topic (default is timer/<frequency>)");
         p_out.println("  --start-delay <num>      start delay in milliseconds before the");
         p_out.println("                           connection to the server is established");
-        p_out.println("  --silent                 do not write sent timestamps to stdout");
+        p_out.println("  --silent                 do not write sent timestamps to the log");
         p_out.println("  --help, -h               show this help");
 
         System.exit(p_iExitCode);
@@ -315,14 +358,14 @@ public final class MqttTimerMain
 
         l_executor = Executors.newScheduledThreadPool(4);
 
-        try (TimerMqttAsyncClient l_client = new TimerMqttAsyncClient(p_strServerUri, l_executor, p_freq))
+        try (TimerMqttClient l_client = new TimerMqttClient(p_strServerUri, l_executor, p_freq))
         {
             final Timer l_timer;
 
             l_options = new MqttConnectOptions();
 
             l_options.setCleanSession(true);
-            l_options.setAutomaticReconnect(true);
+            l_options.setAutomaticReconnect(false);
 
             if (p_strUser != null)
             {
@@ -332,9 +375,7 @@ public final class MqttTimerMain
                     l_options.setPassword(p_strPassword.toCharArray());
             }
 
-            l_client.connect(l_options).waitForCompletion(5000L);
-
-            l_timer = new Timer(l_executor, l_client, p_freq, p_strTopic, p_bSilent);
+            l_timer = new Timer(l_executor, l_client, l_options, p_freq, p_strTopic, p_bSilent);
 
             l_timer.run();
 

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+    <Appenders>
+        <!-- Console appender configuration -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout>
+                <pattern>%-5p %d{ISO8601} - %c[%t]%n %m%n</pattern>
+            </PatternLayout>
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
+        </Console>
+
+        <!-- File appender configuration (daily rotation) -->
+        <RollingFile
+            name="DailyFile"
+            fileName="${sys:log.dir:-log}/${sys:log.name:-log4j2}.log"
+            filePattern="${sys:log.dir:-log}/${sys:log.name:-log4j2}.%d{yyyy-MM-dd}.log">
+            <PatternLayout>
+                <pattern>%-5p %d{ISO8601} - %c[%t]%n %m%n</pattern>
+            </PatternLayout>
+            <TimeBasedTriggeringPolicy interval="1"/>
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Set root logger level -->
+        <Root level="WARN">
+            <AppenderRef ref="Console"/>
+            <!--
+            <AppenderRef ref="DailyFile"/>
+            -->
+        </Root>
+
+        <Logger name="mqtt.timer" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <!--
+            <AppenderRef ref="DailyFile"/>
+            -->
+        </Logger>
+    </Loggers>
+
+</Configuration>
