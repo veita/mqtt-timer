@@ -1,20 +1,24 @@
 
 
 plugins {
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
     id 'application'
 }
 
 
-mainClassName = 'mqtt.timer.MqttTimerMain'
+application {
+    mainClass.set('mqtt.timer.MqttTimerMain')
+}
 
 
 ext.buildCommit    = 'git describe --always --tags --dirty=-dirty'.execute().text.trim()
 ext.buildTimestamp = java.time.format.DateTimeFormatter.ISO_INSTANT.format(java.time.Instant.now())
 ext.buildJdk       = "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})"
 
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
 
 repositories {
     mavenCentral()
